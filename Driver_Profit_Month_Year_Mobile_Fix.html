@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Driver Profit MVP</title>
+<style>
+:root{--bg:#07131d;--panel:#101e29;--panel2:#162734;--text:#f5f7f8;--muted:#9eacb6;--green:#43d36b;--red:#ff5b5b;--blue:#54a7ff;--purple:#a77cff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}
+.app{max-width:480px;margin:auto;min-height:100vh;padding-bottom:78px}
+header{padding:22px 18px 10px;text-align:center;position:sticky;top:0;background:rgba(7,19,29,.96);z-index:5}
+h1{font-size:28px;margin:0 0 4px}.sub{color:var(--muted);font-size:14px}
+.screen{display:none;padding:12px 16px}.screen.active{display:block}
+.card{background:var(--panel);border:1px solid #263947;border-radius:18px;padding:18px;margin:12px 0}
+.hero{background:linear-gradient(135deg,#16452a,#1f8e43);border:0}
+.label{color:#d5e0e6;font-size:13px;text-transform:uppercase;letter-spacing:.7px}.profit{font-size:42px;font-weight:800;margin:8px 0}.green{color:var(--green)}.red{color:var(--red)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:var(--panel2);padding:14px;border-radius:14px}.metric b{display:block;font-size:20px;margin-top:5px}
+button,input,select{font:inherit}button{border:0;border-radius:14px;padding:14px 16px;font-weight:700;cursor:pointer}
+.primary{background:var(--green);color:#06130a;width:100%;font-size:17px}.secondary{background:var(--panel2);color:var(--text)}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center}.small{font-size:13px;color:var(--muted)}
+input,select{width:100%;background:#0c1822;color:var(--text);border:1px solid #334957;border-radius:11px;padding:13px;margin-top:6px}
+.field{margin:10px 0}.shift{padding:14px;border:1px solid #263947;border-radius:14px;margin:9px 0;background:#0d1b26}
+nav{position:fixed;bottom:0;left:0;right:0;background:#0a1721;border-top:1px solid #263947;display:flex;justify-content:center;z-index:10}
+nav button{flex:1;max-width:96px;background:none;color:var(--muted);padding:10px 3px;font-size:11px}nav button.active{color:var(--green)}
+nav span{display:block;font-size:20px;margin-bottom:3px}.tabs{display:flex;gap:6px;margin:10px 0}.tabs button{flex:1;background:var(--panel);color:var(--muted);padding:10px 5px}.tabs button.active{background:var(--green);color:#06130a}
+.notice{border-left:4px solid var(--green);padding:12px;background:#10251a;border-radius:8px}.bigbtn{margin-top:12px}
+</style>
+</head>
+<body>
+<div class="app">
+<header><h1>DRIVER <span class="green">PROFIT</span></h1><div class="sub">Simple profit tracking for drivers</div></header>
+
+<section id="home" class="screen active">
+  <div class="row"><div><b>Today</b><div class="small" id="todayDate"></div></div><button class="secondary" onclick="show('add')">＋ Add Shift</button></div>
+  <div class="card hero"><div class="label">Net Profit</div><div class="profit" id="homeProfit">£0.00</div><div class="row"><div>Earnings<br><b id="homeEarn">£0.00</b></div><div>Expenses<br><b id="homeExp">£0.00</b></div></div></div>
+  <div class="grid">
+    <div class="metric">Hours<b id="homeHours">0h 00m</b></div>
+    <div class="metric">Profit / hour<b id="homePH">£0.00</b></div>
+    <div class="metric">Miles<b id="homeMiles">0</b></div>
+    <div class="metric">Profit / mile<b id="homePM">£0.00</b></div>
+  </div>
+  <div class="card notice"><b>Should I keep working?</b><p class="small">Use your recent hourly profit to estimate another hour.</p><button class="secondary bigbtn" onclick="show('keep')">Calculate</button></div>
+</section>
+
+<section id="add" class="screen">
+<h2>Add Shift</h2>
+<div class="card">
+<div class="field"><label>Date<input id="date" type="date"></label></div>
+<div class="grid"><div class="field"><label>Start<input id="start" type="time" value="09:00"></label></div><div class="field"><label>Finish<input id="finish" type="time" value="17:00"></label></div></div>
+<div class="field"><label>Earnings (£)<input id="earn" type="number" step=".01" placeholder="150"></label></div>
+<div class="field"><label>Miles<input id="miles" type="number" step=".1" placeholder="120"></label></div>
+<div class="grid"><div class="field"><label>Fuel (£)<input id="fuel" type="number" step=".01" value="0"></label></div><div class="field"><label>Parking/tolls (£)<input id="parking" type="number" step=".01" value="0"></label></div></div>
+<div class="field"><label>Other expenses (£)<input id="other" type="number" step=".01" value="0"></label></div>
+</div>
+<div class="card"><div class="label">Estimated result</div><div class="profit green" id="preview">£0.00</div><div class="small" id="previewDetails">Enter your shift details.</div></div>
+<button class="primary" onclick="saveShift()">Save Shift</button>
+</section>
+
+<section id="history" class="screen">
+<h2>History</h2>
+<div class="tabs"><button class="active">All</button><button onclick="filterHistory('week')">Week</button><button onclick="filterHistory('month')">Month</button></div>
+<div id="historyList"></div>
+</section>
+
+<section id="vehicle" class="screen">
+<h2>Vehicle</h2><div class="sub">Manage your vehicle and running costs</div>
+<div class="card">
+<div class="field"><label>Vehicle<input id="vehicleName" value="My Vehicle"></label></div>
+<div class="grid"><div class="field"><label>Fuel type<select id="fuelType"><option>Petrol</option><option>Diesel</option><option>Electric</option></select></label></div><div class="field"><label>MPG<input id="mpg" type="number" value="50"></label></div></div>
+<div class="field"><label>Fuel price (£/litre)<input id="fuelPrice" type="number" step=".01" value="1.42"></label></div>
+</div>
+<div class="card"><div class="row"><b>Annual running costs</b><span class="green" id="annualCost">£0.00</span></div>
+<div class="field"><label>Insurance (£/year)<input class="cost" type="number" value="720"></label></div>
+<div class="field"><label>MOT (£/year)<input class="cost" type="number" value="55"></label></div>
+<div class="field"><label>Road tax (£/year)<input class="cost" type="number" value="180"></label></div>
+<div class="field"><label>Servicing (£/year)<input class="cost" type="number" value="150"></label></div>
+<div class="field"><label>Tyres (£/year)<input class="cost" type="number" value="120"></label></div>
+<div class="field"><label>Repairs (£/year)<input class="cost" type="number" value="100"></label></div>
+</div>
+<button class="primary" onclick="saveVehicle()">Save Vehicle</button>
+</section>
+
+<section id="reports" class="screen">
+<h2>Reports</h2><div class="tabs" id="reportTabs"><button type="button" id="reportMonthBtn" class="active">Month</button><button type="button" id="reportYearBtn">Year</button></div>
+<div class="card"><div class="label">Profit overview</div><div class="grid">
+<div class="metric">Profit<b class="green" id="repProfit">£0.00</b></div><div class="metric">Earnings<b id="repEarn">£0.00</b></div>
+<div class="metric">Expenses<b class="red" id="repExp">£0.00</b></div><div class="metric">Profit/hour<b id="repPH">£0.00</b></div>
+</div></div>
+<div class="card"><b>Performance</b><p id="repText" class="small">Add shifts to generate your report.</p></div>
+</section>
+
+<section id="keep" class="screen">
+<h2>Should I Keep Working?</h2><div class="sub">Estimate the next hour from your recent numbers.</div>
+<div class="card hero"><div class="label">Estimated next-hour profit</div><div class="profit" id="keepProfit">£0.00</div><div id="keepVerdict"><span class="green">Add a shift to get a recommendation.</span></div></div>
+<div class="card"><div class="grid"><div class="metric">Avg earnings/hour<b id="keepEarn">£0.00</b></div><div class="metric">Avg costs/hour<b id="keepCost">£0.00</b></div></div></div>
+<button class="secondary" onclick="show('home')">← Back to Home</button>
+</section>
+
+<nav>
+<button id="n-home" class="active" onclick="show('home')"><span>⌂</span>Home</button>
+<button id="n-add" onclick="show('add')"><span>＋</span>Add Shift</button>
+<button id="n-history" onclick="show('history')"><span>◷</span>History</button>
+<button id="n-vehicle" onclick="show('vehicle')"><span>🚗</span>Vehicle</button>
+<button id="n-reports" onclick="show('reports')"><span>▥</span>Reports</button>
+</nav>
+</div>
+
+<script>
+const money=n=>'£'+(Number(n)||0).toFixed(2);
+let shifts=JSON.parse(localStorage.getItem('driverProfitShifts')||'[]');
+let reportPeriod='month';
+const today=new Date().toISOString().slice(0,10); document.getElementById('date').value=today; document.getElementById('todayDate').textContent=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));let n=document.getElementById('n-'+id);if(n)n.classList.add('active');refresh();window.scrollTo(0,0)}
+function hours(s,e){let a=s.split(':').map(Number),b=e.split(':').map(Number);let x=(b[0]*60+b[1])-(a[0]*60+a[1]);if(x<0)x+=1440;return x/60}
+function autoFuel(){let m=+document.getElementById('miles').value||0, mpgv=+document.getElementById('mpg').value||0, price=+document.getElementById('fuelPrice').value||0; if(mpgv>0&&price>0){let litres=m*4.54609/mpgv; document.getElementById('fuel').value=(litres*price).toFixed(2)}}
+function vals(){let h=hours(document.getElementById('start').value,document.getElementById('finish').value), e=+document.getElementById('earn').value||0, m=+document.getElementById('miles').value||0; autoFuel(); let ex=(+document.getElementById('fuel').value||0)+(+document.getElementById('parking').value||0)+(+document.getElementById('other').value||0);return {h,e,m,ex,p:e-ex}}
+function preview(){let v=vals();document.getElementById('preview').textContent=money(v.p);document.getElementById('previewDetails').textContent=`${v.h.toFixed(2)} hours • ${v.m} miles • ${money(v.p/Math.max(v.h,.01))}/hour`}
+['start','finish','earn','miles','fuel','parking','other'].forEach(id=>document.getElementById(id).addEventListener('input',preview));
+['miles','mpg','fuelPrice'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{autoFuel();preview()}));
+function saveShift(){let v=vals();if(v.e<=0){alert('Please enter earnings.');return}shifts.unshift({id:Date.now(),date:document.getElementById('date').value,start:document.getElementById('start').value,finish:document.getElementById('finish').value,...v});localStorage.setItem('driverProfitShifts',JSON.stringify(shifts));document.getElementById('earn').value='';document.getElementById('miles').value='';document.getElementById('fuel').value='0';document.getElementById('parking').value='0';document.getElementById('other').value='0';show('history')}
+function totals(arr=shifts){return arr.reduce((a,s)=>{a.e+=s.e;a.ex+=s.ex;a.p+=s.p;a.h+=s.h;a.m+=s.m;return a},{e:0,ex:0,p:0,h:0,m:0})}
+function refresh(){let t=totals(shifts);document.getElementById('homeProfit').textContent=money(t.p);document.getElementById('homeEarn').textContent=money(t.e);document.getElementById('homeExp').textContent=money(t.ex);document.getElementById('homeHours').textContent=Math.floor(t.h)+'h '+String(Math.round((t.h%1)*60)).padStart(2,'0')+'m';document.getElementById('homePH').textContent=money(t.p/Math.max(t.h,.01));document.getElementById('homeMiles').textContent=Math.round(t.m);document.getElementById('homePM').textContent=money(t.p/Math.max(t.m,.01));renderReport();renderHistory();keepCalc();annual()}
+function renderHistory(){let el=document.getElementById('historyList');if(!shifts.length){el.innerHTML='<div class="card small">No shifts yet. Tap Add Shift to record your first one.</div>';return}el.innerHTML=shifts.map(s=>`<div class="shift"><div class="row"><b>${new Date(s.date+'T12:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</b><b class="green">${money(s.p)}</b></div><div class="small">${s.start}–${s.finish} • ${s.h.toFixed(2)}h • ${s.m} miles</div><div class="row"><span>Earnings ${money(s.e)}</span><span class="red">Expenses ${money(s.ex)}</span></div></div>`).join('')}
+
+function filterHistory(period){
+  document.querySelectorAll('#history .tabs button').forEach(b=>b.classList.remove('active'));
+  const btn=[...document.querySelectorAll('#history .tabs button')].find(b=>b.textContent.toLowerCase()===period);
+  if(btn) btn.classList.add('active');
+  let now=new Date(), arr=shifts;
+  if(period==='week') arr=shifts.filter(s=>new Date(s.date+'T12:00')>=new Date(now.getTime()-7*86400000));
+  if(period==='month') arr=shifts.filter(s=>{let d=new Date(s.date+'T12:00');return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear()});
+  let el=document.getElementById('historyList');
+  if(!arr.length){el.innerHTML='<div class="card small">No shifts in this period.</div>';return}
+  el.innerHTML=arr.map(s=>`<div class="shift"><div class="row"><b>${new Date(s.date+'T12:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</b><b class="green">${money(s.p)}</b></div><div class="small">${s.start}–${s.finish} • ${s.h.toFixed(2)}h • ${s.m} miles</div><div class="row"><span>Earnings ${money(s.e)}</span><span class="red">Expenses ${money(s.ex)}</span></div></div>`).join('')
+}
+
+function setReportPeriod(period){
+  reportPeriod=period;
+  document.getElementById('reportMonthBtn').classList.toggle('active',period==='month');
+  document.getElementById('reportYearBtn').classList.toggle('active',period==='year');
+  renderReport();
+}
+
+const reportMonthBtn=document.getElementById('reportMonthBtn');
+const reportYearBtn=document.getElementById('reportYearBtn');
+function chooseMonth(){setReportPeriod('month')}
+function chooseYear(){setReportPeriod('year')}
+reportMonthBtn.addEventListener('click',chooseMonth);
+reportYearBtn.addEventListener('click',chooseYear);
+reportMonthBtn.addEventListener('touchend',e=>{e.preventDefault();chooseMonth()},{passive:false});
+reportYearBtn.addEventListener('touchend',e=>{e.preventDefault();chooseYear()},{passive:false});
+function renderReport(){
+  const now=new Date();
+  const arr=shifts.filter(s=>{const d=new Date(s.date+'T12:00'); return reportPeriod==='year' ? d.getFullYear()===now.getFullYear() : d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  const t=totals(arr);
+  document.getElementById('repProfit').textContent=money(t.p);
+  document.getElementById('repEarn').textContent=money(t.e);
+  document.getElementById('repExp').textContent=money(t.ex);
+  document.getElementById('repPH').textContent=money(t.p/Math.max(t.h,.01));
+  document.getElementById('repText').textContent=arr.length?`${arr.length} shift(s), ${Math.round(t.m)} miles and ${Math.floor(t.h)}h ${Math.round((t.h%1)*60)}m worked. Average profit per shift: ${money(t.p/arr.length)}.`:`No shifts in this ${reportPeriod}.`;
+}
+
+function keepCalc(){let t=totals(shifts), ep=t.e/Math.max(t.h,.01), cp=t.ex/Math.max(t.h,.01), p=ep-cp;document.getElementById('keepProfit').textContent=money(p);document.getElementById('keepEarn').textContent=money(ep);document.getElementById('keepCost').textContent=money(cp);document.getElementById('keepVerdict').innerHTML=p>0?`<span class="green"><b>YES — you're currently profitable.</b></span>`:`<span class="red"><b>CAUTION — costs are higher than earnings.</b></span>`}
+function annual(){let sum=[...document.querySelectorAll('.cost')].reduce((a,x)=>a+(+x.value||0),0);document.getElementById('annualCost').textContent=money(sum)}
+function saveVehicle(){localStorage.setItem('driverProfitVehicle',JSON.stringify({name:document.getElementById('vehicleName').value,type:document.getElementById('fuelType').value,mpg:document.getElementById('mpg').value,price:document.getElementById('fuelPrice').value,costs:[...document.querySelectorAll('.cost')].map(x=>+x.value||0)}));alert('Vehicle saved.')}
+document.querySelectorAll('.cost').forEach(x=>x.addEventListener('input',annual));
+let v=JSON.parse(localStorage.getItem('driverProfitVehicle')||'null');if(v){document.getElementById('vehicleName').value=v.name||'';document.getElementById('fuelType').value=v.type||'Petrol';document.getElementById('mpg').value=v.mpg||50;document.getElementById('fuelPrice').value=v.price||1.42;[...document.querySelectorAll('.cost')].forEach((x,i)=>x.value=v.costs?.[i]??x.value)}
+preview();refresh();
+</script>
+</body></html>
